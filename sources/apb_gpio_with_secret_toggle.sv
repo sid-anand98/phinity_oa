@@ -12,14 +12,14 @@ module apb_gpio_with_secret_toggle (
     output logic        pready,
     output logic        secret_pin
 );
-    
-    logic do_write = 1'b0;
-    logic do_read  = 1'b0;
+    // ------------------------------------------------------------------
+    // APB handshake helpers
+    // ------------------------------------------------------------------
+    logic do_write;
+    logic do_read;
 
-    always_comb begin
-        do_write = psel & penable & pwrite;
-        do_read  = psel & penable & ~pwrite;
-    end
+    assign do_write = psel & penable & pwrite;
+    assign do_read  = psel & penable & ~pwrite;
 
     // ------------------------------------------------------------------
     // State / registers
@@ -34,7 +34,8 @@ module apb_gpio_with_secret_toggle (
     logic [7:0]  gpio_reg;
     logic        secret_reg;
     logic [7:0]  last_val;
-    logic [31:0] cycle_cnt;   // counts idle cycles between writes
+    logic [31:0] cycle_cnt;
+    logic [31:0] next_cnt;      
     logic        toggle_req;
 
     assign pready     = 1'b1;
@@ -70,17 +71,17 @@ module apb_gpio_with_secret_toggle (
                 gpio_reg <= pwdata[7:0];
 
             // Default next counter value
-            logic [31:0] next_cnt = cycle_cnt;
+            next_cnt = cycle_cnt;
 
             // Immediate abort on read or wrong address write
             if (do_read || (do_write && paddr != 32'h0)) begin
                 seq_state <= IDLE;
-                next_cnt  <= 32'd0;
+                next_cnt  = 32'd0;
             end else begin
                 case (seq_state)
                     // --------------------------------------------------
                     IDLE: begin
-                        next_cnt <= 32'd0;
+                        next_cnt = 32'd0;
                         if (do_write && allowed_even(pwdata[7:0])) begin
                             seq_state <= S1;
                             last_val  <= pwdata[7:0];
@@ -95,19 +96,19 @@ module apb_gpio_with_secret_toggle (
                                 (cycle_cnt != 32'd2)) begin
                                 // Wrong value or wrong timing → abort immediately
                                 seq_state <= IDLE;
-                                next_cnt  <= 32'd0;
+                                next_cnt  = 32'd0;
                             end else begin
                                 // Correct second write exactly 3 cycles later
                                 seq_state <= S2;
                                 last_val  <= pwdata[7:0];
-                                next_cnt  <= 32'd0;
+                                next_cnt  = 32'd0;
                             end
                         end else if (cycle_cnt == 32'd2) begin
                             // Timeout with no write
                             seq_state <= IDLE;
-                            next_cnt  <= 32'd0;
+                            next_cnt  = 32'd0;
                         end else begin
-                            next_cnt <= cycle_cnt + 1;
+                            next_cnt = cycle_cnt + 1;
                         end
                     end
 
@@ -118,24 +119,24 @@ module apb_gpio_with_secret_toggle (
                                 (pwdata[7:0] <= last_val)     ||
                                 (cycle_cnt != 32'd2)) begin
                                 seq_state <= IDLE;
-                                next_cnt  <= 32'd0;
+                                next_cnt  = 32'd0;
                             end else begin
                                 // Full sequence satisfied
                                 toggle_req <= 1'b1;
                                 seq_state  <= IDLE;
-                                next_cnt   <= 32'd0;
+                                next_cnt   = 32'd0;
                             end
                         end else if (cycle_cnt == 32'd2) begin
                             seq_state <= IDLE;
-                            next_cnt  <= 32'd0;
+                            next_cnt  = 32'd0;
                         end else begin
-                            next_cnt <= cycle_cnt + 1;
+                            next_cnt = cycle_cnt + 1;
                         end
                     end
 
                     default: begin
                         seq_state <= IDLE;
-                        next_cnt  <= 32'd0;
+                        next_cnt  = 32'd0;
                     end
                 endcase
             end
