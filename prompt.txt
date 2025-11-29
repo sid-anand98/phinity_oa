@@ -1,0 +1,5 @@
+Complete the file `rtl/apb_gpio_with_secret_toggle.sv` exactly as described in Specification.md. 
+
+The output `secret_pin` must toggle only on the specific three-write sequence with correct values, strictly increasing, and correct 3-cycle spacing between writes. 
+
+Return the full SystemVerilog file.
