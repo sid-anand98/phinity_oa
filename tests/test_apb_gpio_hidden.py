@@ -29,7 +29,7 @@ async def apb_read(dut, addr):
 
     dut.penable.value = 1
     await RisingEdge(dut.pclk)   # enable/strobe
-    data = dut.prdata.value.integer
+    data = int(dut.prdata.value)  # ✅ FIXED
 
     dut.psel.value = 0
     dut.penable.value = 0
@@ -54,7 +54,7 @@ async def apb_gpio_secret_sequence(dut):
     """Full APB GPIO secret_pin sequence test for Option B RTL"""
 
     # Clock
-    cocotb.start_soon(Clock(dut.pclk, 10, units="ns").start())
+    cocotb.start_soon(Clock(dut.pclk, 10, unit="ns").start())  # ✅ FIXED
     await reset(dut)
 
     # ------------------------------------------------------------
@@ -74,7 +74,7 @@ async def apb_gpio_secret_sequence(dut):
     await wait_cycles(3, dut)
     await apb_write(dut, 0x0, 6)
     await RisingEdge(dut.pclk)  # toggle latency
-    assert dut.secret_pin.value.integer == 1, "Happy path failed: secret_pin did not toggle"
+    assert int(dut.secret_pin.value) == 1, "Happy path failed: secret_pin did not toggle"  # ✅ FIXED
     await reset(dut)
 
     # ------------------------------------------------------------
@@ -86,7 +86,7 @@ async def apb_gpio_secret_sequence(dut):
     await wait_cycles(3, dut)
     await apb_write(dut, 0x0, 6)
     await RisingEdge(dut.pclk)
-    assert dut.secret_pin.value.integer == 0, "Too-short timing incorrectly toggled secret_pin"
+    assert int(dut.secret_pin.value) == 0, "Too-short timing incorrectly toggled secret_pin"  # ✅ FIXED
     await reset(dut)
 
     # ------------------------------------------------------------
@@ -98,7 +98,7 @@ async def apb_gpio_secret_sequence(dut):
     await wait_cycles(3, dut)
     await apb_write(dut, 0x0, 6)
     await RisingEdge(dut.pclk)
-    assert dut.secret_pin.value.integer == 0, "Late sequence incorrectly toggled secret_pin"
+    assert int(dut.secret_pin.value) == 0, "Late sequence incorrectly toggled secret_pin"  # ✅ FIXED
     await reset(dut)
 
     # ------------------------------------------------------------
@@ -112,7 +112,7 @@ async def apb_gpio_secret_sequence(dut):
     await wait_cycles(3, dut)
     await apb_write(dut, 0x0, 6)
     await RisingEdge(dut.pclk)
-    assert dut.secret_pin.value.integer == 0, "Read-between-writes incorrectly toggled secret_pin"
+    assert int(dut.secret_pin.value) == 0, "Read-between-writes incorrectly toggled secret_pin"  # ✅ FIXED
     await reset(dut)
 
     # ------------------------------------------------------------
@@ -124,7 +124,7 @@ async def apb_gpio_secret_sequence(dut):
     await wait_cycles(3, dut)
     await apb_write(dut, 0x0, 6)
     await RisingEdge(dut.pclk)
-    assert dut.secret_pin.value.integer == 0, "Wrong address write incorrectly toggled secret_pin"
+    assert int(dut.secret_pin.value) == 0, "Wrong address write incorrectly toggled secret_pin"  # ✅ FIXED
     await reset(dut)
 
     # ------------------------------------------------------------
@@ -136,7 +136,7 @@ async def apb_gpio_secret_sequence(dut):
     await wait_cycles(3, dut)
     await apb_write(dut, 0x0, 4)
     await RisingEdge(dut.pclk)
-    assert dut.secret_pin.value.integer == 0, "Non-increasing values incorrectly toggled secret_pin"
+    assert int(dut.secret_pin.value) == 0, "Non-increasing values incorrectly toggled secret_pin"  # ✅ FIXED
 
 
 # ✅ CRITICAL: Pytest wrapper function
@@ -144,12 +144,12 @@ def test_apb_gpio_hidden_runner():
     import os
     from pathlib import Path
     from cocotb_tools.runner import get_runner
-    
+
     sim = os.getenv("SIM", "icarus")
     proj_path = Path(__file__).resolve().parent.parent
-    
+
     sources = [proj_path / "sources/apb_gpio_with_secret_toggle.sv"]
-    
+
     runner = get_runner(sim)
     runner.build(
         sources=sources,
@@ -160,4 +160,3 @@ def test_apb_gpio_hidden_runner():
         hdl_toplevel="apb_gpio_with_secret_toggle",
         test_module="test_apb_gpio_hidden"
     )
-
